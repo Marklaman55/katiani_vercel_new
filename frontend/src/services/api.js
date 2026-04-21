@@ -1,6 +1,13 @@
-const API_URL = import.meta.env.VITE_API_URL;
-console.log("API URL:", API_URL);
+const BASE_URL = import.meta.env.VITE_API_URL;
+console.log("API URL:", BASE_URL);
 
+// Simple direct function (unchanged logic)
+export const getProducts = async () => {
+  const res = await fetch(`${BASE_URL}/api/products`);
+  return res.json();
+};
+
+// Main API request handler
 export const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('adminToken');
   const headers = { ...options.headers };
@@ -15,7 +22,7 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
-    const res = await fetch(`${API_URL}${endpoint}`, {
+    const res = await fetch(`${BASE_URL}${endpoint}`, {
       credentials: "include",
       ...options,
       headers
@@ -40,26 +47,31 @@ const api = {
     if (res.error) throw res;
     return { data: res };
   },
+
   post: async (url, data, options) => {
     const isFormData = data instanceof FormData;
     const body = isFormData ? data : JSON.stringify(data);
     const headers = { ...options?.headers };
+
     if (!isFormData) headers["Content-Type"] = "application/json";
     
     const res = await apiRequest(url, { ...options, method: 'POST', body, headers });
     if (res.error) throw res;
     return { data: res };
   },
+
   patch: async (url, data, options) => {
     const isFormData = data instanceof FormData;
     const body = isFormData ? data : JSON.stringify(data);
     const headers = { ...options?.headers };
+
     if (!isFormData) headers["Content-Type"] = "application/json";
 
     const res = await apiRequest(url, { ...options, method: 'PATCH', body, headers });
     if (res.error) throw res;
     return { data: res };
   },
+
   delete: async (url, options) => {
     const res = await apiRequest(url, { ...options, method: 'DELETE' });
     if (res.error) throw res;
