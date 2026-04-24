@@ -4,9 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "tsx backend/server.js",
     "build": "vite build frontend --config frontend/vite.config.ts",
     "preview": "vite preview frontend --config frontend/vite.config.ts",
     "clean": "rm -rf frontend/dist",

@@ -5,8 +5,10 @@ const router = express.Router();
 
 // Get all services
 router.get('/', async (req, res) => {
+  console.log("📡 GET /api/services hit");
   try {
     const services = await Service.find().populate('category');
+    console.log(`✅ Found ${services.length} services`);
     res.json(services);
   } catch (err) {
     console.error("Fetch services error:", err.message);

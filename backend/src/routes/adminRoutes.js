@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User, Booking, Service, Category, Review, SystemConfig } from '../models.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import { upload } from '../config/cloudinary.js';
 
 const router = express.Router();
@@ -11,18 +11,32 @@ const JWT_SECRET = process.env.JWT_SECRET || 'katiani-styles-secret-key';
 
 // Admin Login
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body; // Using username as requested in frontend
+  const { username, password } = req.body; 
+  console.log(`📡 API: Login attempt for username: ${username}`);
   try {
-    // We'll search by email or username, assuming email is used as username for now
-    const user = await User.findOne({ email: username });
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    // Search by username or email
+    const user = await User.findOne({ 
+      $or: [
+        { email: username },
+        { username: username }
+      ]
+    });
+    if (!user) {
+      console.log(`❌ ERROR: Login failed: User ${username} not found`);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!isMatch) {
+      console.log(`❌ ERROR: Login failed: Password mismatch for ${username}`);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+    console.log(`✅ SUCCESS: Admin logged in: ${username}`);
     res.json({ token, user: { email: user.email, role: user.role } });
   } catch (err) {
+    console.log(`❌ ERROR: Login Exception: ${err.message}`);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -120,7 +134,7 @@ router.delete('/clients/:phone', async (req, res) => {
 });
 
 // Services
-router.post('/services', upload.array('images'), async (req, res) => {
+router.post('/services', adminMiddleware, upload.array('images'), async (req, res) => {
   try {
     const { name, description, price, duration, category } = req.body;
     const images = (req.files || []).map(file => file.path);
@@ -137,11 +151,12 @@ router.post('/services', upload.array('images'), async (req, res) => {
     await service.save();
     res.status(201).json(service);
   } catch (err) {
-    res.status(500).json({ message: 'Error creating service' });
+    console.log(`❌ ERROR: Service Create Error: ${err.message}`);
+    res.status(500).json({ message: 'Error creating service', error: err.message });
   }
 });
 
-router.patch('/services/:id', upload.array('images'), async (req, res) => {
+router.patch('/services/:id', adminMiddleware, upload.array('images'), async (req, res) => {
   try {
     const { name, description, price, duration, category, existingImages } = req.body;
     const newImages = (req.files || []).map(file => file.path);
@@ -159,11 +174,12 @@ router.patch('/services/:id', upload.array('images'), async (req, res) => {
     const service = await Service.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json(service);
   } catch (err) {
-    res.status(500).json({ message: 'Error updating service' });
+    console.log(`❌ ERROR: Service Update Error: ${err.message}`);
+    res.status(500).json({ message: 'Error updating service', error: err.message });
   }
 });
 
-router.delete('/services/:id', async (req, res) => {
+router.delete('/services/:id', adminMiddleware, async (req, res) => {
   try {
     await Service.findByIdAndDelete(req.params.id);
     res.json({ message: 'Service deleted' });
@@ -173,26 +189,28 @@ router.delete('/services/:id', async (req, res) => {
 });
 
 // Categories
-router.post('/categories', async (req, res) => {
+router.post('/categories', adminMiddleware, async (req, res) => {
   try {
     const category = new Category(req.body);
     await category.save();
     res.status(201).json(category);
   } catch (err) {
-    res.status(500).json({ message: 'Error creating category' });
+    console.log(`❌ ERROR: Category Create Error: ${err.message}`);
+    res.status(500).json({ message: 'Error creating category', error: err.message });
   }
 });
 
-router.patch('/categories/:id', async (req, res) => {
+router.patch('/categories/:id', adminMiddleware, async (req, res) => {
   try {
     const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(category);
   } catch (err) {
-    res.status(500).json({ message: 'Error updating category' });
+    console.log(`❌ ERROR: Category Update Error: ${err.message}`);
+    res.status(500).json({ message: 'Error updating category', error: err.message });
   }
 });
 
-router.delete('/categories/:id', async (req, res) => {
+router.delete('/categories/:id', adminMiddleware, async (req, res) => {
   try {
     // Check if services are using this category
     const count = await Service.countDocuments({ category: req.params.id });

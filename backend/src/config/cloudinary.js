@@ -25,9 +25,14 @@ export const configureCloudinary = (config) => {
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "katiani-styles",
-    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+  params: async (req, file) => {
+    if (!cloudinary.config().api_key) {
+      throw new Error("Cloudinary is not configured. Please add CLOUDINARY_API_KEY to your environment variables.");
+    }
+    return {
+      folder: "katiani-styles",
+      allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    };
   },
 });
 

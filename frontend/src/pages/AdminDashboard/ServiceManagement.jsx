@@ -61,6 +61,20 @@ const ServiceManagement = ({ confirmAction }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validation
+    const priceNum = Number(formData.price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast.error("Price must be a positive number");
+      return;
+    }
+
+    const durationRegex = /^(\d+h)?\s*(\d+m)?$/;
+    if (!durationRegex.test(formData.duration.trim()) || formData.duration.trim() === "") {
+      toast.error("Duration must be in format '2h' or '1h 30m'");
+      return;
+    }
+
     setSaving(true);
 
     const submitData = new FormData();
@@ -189,10 +203,11 @@ const ServiceManagement = ({ confirmAction }) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">Duration (e.g. 2 hours)</label>
+                    <label className="text-sm font-bold text-gray-700">Duration (e.g. 2h or 1h 30m)</label>
                     <input 
                       required
                       className="input-field"
+                      placeholder="e.g. 1h 30m"
                       value={formData.duration}
                       onChange={e => setFormData({...formData, duration: e.target.value})}
                     />

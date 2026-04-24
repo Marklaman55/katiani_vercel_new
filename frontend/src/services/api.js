@@ -27,13 +27,21 @@ export const apiRequest = async (endpoint, options = {}) => {
 
     if (!res.ok) {
       let errorMessage = `API error: ${res.status}`;
-      try {
-        const errorBody = await res.json();
-        errorMessage = errorBody.message || errorMessage;
-      } catch (e) {
-        // Fallback if not JSON
+      const contentType = res.headers.get("content-type");
+      
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          const errorBody = await res.json();
+          console.error("API Error Body:", errorBody);
+          errorMessage = errorBody.message || errorMessage;
+          if (errorBody.debug) errorMessage += ` (Debug: ${errorBody.debug})`;
+        } catch (e) {
+          console.error("Failed to parse JSON error:", e);
+        }
+      } else {
         const text = await res.text().catch(() => "");
-        if (text) errorMessage = text;
+        console.error("Non-JSON error response:", text.substring(0, 500));
+        errorMessage = `Server returned HTML/Text instead of JSON. Check backend logs. (Status: ${res.status})`;
       }
       throw new Error(errorMessage);
     }

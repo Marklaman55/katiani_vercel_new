@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
@@ -17,6 +17,13 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
+  useEffect(() => {
+    fetch('/api/connection')
+      .then(r => r.json())
+      .then(d => console.log('🚀 CONNECTION OK:', d))
+      .catch(e => console.error('🚀 CONNECTION FAILED:', e));
+  }, []);
+
   return (
     <Router>
       <div className="flex flex-col min-h-screen">
