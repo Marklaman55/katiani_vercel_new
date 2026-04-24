@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
@@ -17,16 +17,29 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
+  const [connStatus, setConnStatus] = useState('Checking...');
+
   useEffect(() => {
+    console.log("🛠️ CURRENT LOCATION:", window.location.href);
     fetch('/api/connection')
       .then(r => r.json())
-      .then(d => console.log('🚀 CONNECTION OK:', d))
-      .catch(e => console.error('🚀 CONNECTION FAILED:', e));
+      .then(d => {
+        console.log('🚀 CONNECTION OK:', d);
+        setConnStatus(`Connected ✅ (DB: ${d.database || '?'})`);
+      })
+      .catch(e => {
+        console.error('🚀 CONNECTION FAILED:', e);
+        setConnStatus('Connection Failed ❌');
+      });
   }, []);
 
   return (
     <Router>
       <div className="flex flex-col min-h-screen">
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-black text-white text-[10px] px-2 py-1 flex justify-between items-center opacity-50 hover:opacity-100 transition-opacity">
+          <span>{connStatus}</span>
+          <span>{window.location.host}</span>
+        </div>
         <Navbar />
         <main className="flex-grow">
           <Routes>

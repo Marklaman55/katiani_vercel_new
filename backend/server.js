@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -15,8 +15,6 @@ import reviewRoutes from './src/routes/reviewRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-dotenv.config();
 
 // 🔥 CRASH HANDLER
 process.on('uncaughtException', (err) => {
@@ -39,11 +37,13 @@ const log = {
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
-
-  // 📡 REQUEST TRACKER
+  
+  console.log(`📡 [DEBUG] NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`📡 [DEBUG] CWD: ${process.cwd()}`);
+  console.log(`📡 [DEBUG] __dirname: ${__dirname}`);
   app.use((req, res, next) => {
     const origin = req.headers.origin || "unknown";
-    console.log(`[REQUEST] ${req.method} ${req.url} (Origin: ${origin})`);
+    console.log(`📡 [EXPRESS-REQ] ${req.method} ${req.url} (Origin: ${origin}, Content-Type: ${req.headers['content-type']})`);
     next();
   });
 
@@ -71,7 +71,13 @@ async function startServer() {
   });
 
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', database: mongoose.connection.readyState });
+    res.json({ 
+      status: 'ok', 
+      database: mongoose.connection.readyState,
+      routes: app._router.stack
+        .filter(r => r.route || (r.handle && r.handle.stack))
+        .map(r => r.route ? `${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}` : 'middleware/router')
+    });
   });
 
   // DB Connection Status Middleware
@@ -129,20 +135,22 @@ async function startServer() {
     res.status(err.status || 500).json({ success: false, message: errMsg });
   });
 
-  // Database Connection
-  try {
-    await connectDB();
-    log.db("MongoDB connected successfully");
+  // Start listening immediately to avoid AI Studio timeout fallbacks
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log("====================================");
+    log.server(`Full-stack server running on port ${PORT}`);
+    console.log("====================================");
+  });
 
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log("====================================");
-      log.server(`Full-stack server running on port ${PORT}`);
-      console.log("====================================");
+  // Database Connection (in background)
+  connectDB()
+    .then(() => {
+      log.db("MongoDB connected successfully");
+      console.log(`📡 [SERVER-INFO] Database State: ${mongoose.connection.readyState}`);
+    })
+    .catch((err) => {
+      log.error(`Database connection failed: ${err.message}`);
     });
-  } catch (err) {
-    log.error(`Startup failed: ${err.message}`);
-    process.exit(1);
-  }
 }
 
 startServer();
