@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit, Upload, ImageIcon, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ const ServiceManagement = ({ confirmAction }) => {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [formData, setFormData] = useState({
@@ -22,6 +23,8 @@ const ServiceManagement = ({ confirmAction }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     fetchData();
   }, []);
 
@@ -29,11 +32,11 @@ const ServiceManagement = ({ confirmAction }) => {
     setLoading(true);
     try {
       const [servicesData, categoriesData] = await Promise.all([
-        apiRequest('/services'),
-        apiRequest('/categories')
+        apiRequest('/api/services'),
+        apiRequest('/api/categories')
       ]);
-      setServices(servicesData);
-      setCategories(categoriesData);
+      setServices(Array.isArray(servicesData) ? servicesData : []);
+      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
     } catch (err) {
       toast.error("Failed to fetch services data");
     } finally {
@@ -76,13 +79,13 @@ const ServiceManagement = ({ confirmAction }) => {
 
     try {
       if (editingService) {
-        await apiRequest(`/admin/services/${editingService._id}`, {
+        await apiRequest(`/api/admin/services/${editingService._id}`, {
           method: 'PATCH',
           body: submitData
         });
         toast.success("Service updated");
       } else {
-        await apiRequest('/admin/services', {
+        await apiRequest('/api/admin/services', {
           method: 'POST',
           body: submitData
         });
@@ -105,7 +108,7 @@ const ServiceManagement = ({ confirmAction }) => {
       'Are you sure you want to delete this service? This action cannot be undone.',
       async () => {
         try {
-          await apiRequest(`/admin/services/${id}`, { method: 'DELETE' });
+          await apiRequest(`/api/admin/services/${id}`, { method: 'DELETE' });
           toast.success("Service deleted");
           fetchData();
         } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../services/api';
 import ServiceCard from '../components/ServiceCard';
 import { cn } from '../lib/utils';
@@ -8,17 +8,21 @@ const ServicesPage = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchData = async () => {
       setLoading(true);
       try {
         const [servicesData, categoriesData] = await Promise.all([
-          apiRequest('/services'),
-          apiRequest('/categories')
+          apiRequest('/api/services'),
+          apiRequest('/api/categories')
         ]);
-        setServices(servicesData);
-        setCategories(categoriesData);
+        setServices(Array.isArray(servicesData) ? servicesData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (err) {
         console.error("Failed to fetch services data:", err.message);
       } finally {

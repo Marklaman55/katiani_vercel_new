@@ -21,7 +21,7 @@ const SuccessPage = () => {
     e.preventDefault();
     if (rating === 0) return toast.error("Please select a rating");
     try {
-      await apiRequest('/reviews', { 
+      await apiRequest('/api/reviews', { 
         method: 'POST',
         body: JSON.stringify({ bookingId: booking._id, rating, comment })
       });
@@ -65,7 +65,7 @@ const SuccessPage = () => {
           
           <div className="bg-white p-6 rounded-2xl border border-brand-pink-dark inline-block mb-8">
             <QRCodeSVG value={JSON.stringify({ id: booking._id, name: booking.name })} size={150} />
-            <p className="text-xs text-gray-500 mt-4 font-mono">ID: {booking._id.slice(-8)}</p>
+            <p className="text-xs text-gray-500 mt-4 font-mono">ID: {booking._id?.slice(-8) || 'N/A'}</p>
           </div>
         </motion.div>
 

@@ -1,25 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Filter, Download, Trash2, Edit, Phone, Mail, User as UserIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '../../services/api';
+import { apiRequest } from '../../services/api';
 import { cn, formatKenyanNumber } from '../../lib/utils';
 
 const ClientManagement = ({ confirmAction }) => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     fetchClients();
   }, []);
 
   const fetchClients = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/admin/clients');
-      setClients(res.data);
+      const data = await apiRequest('/api/admin/clients');
+      setClients(Array.isArray(data) ? data : []);
     } catch (err) {
       toast.error("Failed to fetch clients");
     } finally {
@@ -33,7 +36,7 @@ const ClientManagement = ({ confirmAction }) => {
       'Are you sure you want to delete this client? This will remove all their booking history.',
       async () => {
         try {
-          await api.delete(`/api/admin/clients/${id}`);
+          await apiRequest(`/api/admin/clients/${id}`, { method: 'DELETE' });
           toast.success("Client deleted");
           fetchClients();
         } catch (err) {
@@ -44,7 +47,9 @@ const ClientManagement = ({ confirmAction }) => {
     );
   };
 
-  const filteredClients = clients
+  const safeClients = Array.isArray(clients) ? clients : [];
+
+  const filteredClients = safeClients
     .filter(client => 
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.phone.includes(searchTerm) ||

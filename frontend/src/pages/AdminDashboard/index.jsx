@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -61,12 +61,19 @@ const AdminDashboard = () => {
     });
   };
 
+  const loadingRef = useRef(false);
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
       navigate('/admin/login');
       return;
     }
+    
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     fetchData();
     checkWhatsapp();
     const interval = setInterval(fetchData, 60000); // Refresh every minute
@@ -74,27 +81,30 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   const fetchData = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     try {
       const [bookingsData, statsData] = await Promise.all([
-        apiRequest('/admin/bookings'),
-        apiRequest('/admin/stats')
+        apiRequest('/api/admin/bookings'),
+        apiRequest('/api/admin/stats')
       ]);
-      setBookings(bookingsData);
-      setStats(statsData);
+      setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      setStats(statsData && !statsData.error ? statsData : { totalBookings: 0, totalRevenue: 0, pendingBookings: 0, activeClients: 0 });
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (err.message?.includes('401')) {
         localStorage.removeItem('adminToken');
         navigate('/admin/login');
       }
       toast.error("Failed to fetch dashboard data");
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   };
 
   const checkWhatsapp = async () => {
     try {
-      const data = await apiRequest('/admin/whatsapp-status');
+      const data = await apiRequest('/api/admin/whatsapp-status');
       setWhatsappStatus(data.status);
     } catch (err) {
       setWhatsappStatus('error');

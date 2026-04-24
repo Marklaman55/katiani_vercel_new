@@ -1,26 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Edit, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import api from '../../services/api';
+import { apiRequest } from '../../services/api';
 
 const CategoryManagement = ({ confirmAction }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     fetchCategories();
   }, []);
 
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/categories');
-      setCategories(res.data);
+      const data = await apiRequest('/api/categories');
+      setCategories(Array.isArray(data) ? data : []);
     } catch (err) {
       toast.error("Failed to fetch categories");
     } finally {
@@ -33,10 +36,16 @@ const CategoryManagement = ({ confirmAction }) => {
     setSaving(true);
     try {
       if (editingCategory) {
-        await api.patch(`/api/admin/categories/${editingCategory._id}`, formData);
+        await apiRequest(`/api/admin/categories/${editingCategory._id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(formData)
+        });
         toast.success("Category updated");
       } else {
-        await api.post('/api/admin/categories', formData);
+        await apiRequest('/api/admin/categories', {
+          method: 'POST',
+          body: JSON.stringify(formData)
+        });
         toast.success("Category created");
       }
       setShowForm(false);
@@ -56,7 +65,7 @@ const CategoryManagement = ({ confirmAction }) => {
       'Are you sure you want to delete this category? This will only work if no services are assigned to it.',
       async () => {
         try {
-          await api.delete(`/api/admin/categories/${id}`);
+          await apiRequest(`/api/admin/categories/${id}`, { method: 'DELETE' });
           toast.success("Category deleted");
           fetchCategories();
         } catch (err) {

@@ -15,7 +15,7 @@ const AdminLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await apiRequest('/admin/login', {
+      const res = await apiRequest('/api/admin/login', {
         method: 'POST',
         body: JSON.stringify({ username, password })
       });

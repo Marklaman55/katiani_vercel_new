@@ -1,115 +1,73 @@
 import dotenv from "dotenv";
-import express from "express";
-import cors from "cors";
-import { connectDB } from "./src/config/db.js";
-
-import bookingRoutes from "./src/routes/bookingRoutes.js";
-import serviceRoutes from "./src/routes/serviceRoutes.js";
-import categoryRoutes from "./src/routes/categoryRoutes.js";
-import adminRoutes from "./src/routes/adminRoutes.js";
-import paymentRoutes from "./src/routes/paymentRoutes.js";
-import reviewRoutes from "./src/routes/reviewRoutes.js";
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import { connectDB } from './src/config/db.js';
+import bookingRoutes from './src/routes/bookingRoutes.js';
+import serviceRoutes from './src/routes/serviceRoutes.js';
+import categoryRoutes from './src/routes/categoryRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
+import paymentRoutes from './src/routes/paymentRoutes.js';
+import reviewRoutes from './src/routes/reviewRoutes.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000; // Hardcode to 5000 to avoid conflicts with AI Studio's PORT env var
 
-// 🔥 CORS (FINAL WORKING VERSION)
+// Middleware
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-
-    const isAllowed =
-      origin.startsWith("http://localhost") ||
-      origin.startsWith("http://127.0.0.1") ||
-      origin.includes(".vercel.app") ||
-      origin.includes("ngrok-free.dev") ||
-      origin.includes("ngrok.io");
-
-    if (isAllowed) {
-      console.log(`✅ CORS ALLOWED: ${origin}`);
-      callback(null, true);
-    } else {
-      console.log(`❌ CORS BLOCKED: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "https://katiani-styles.vercel.app",
+    /\.ngrok\.io$/,
+    /https:\/\/.*\.ngrok\.io/
+  ],
   credentials: true
 }));
+app.use(express.json());
 
-// 🔥 REQUEST LOGGER (VERY IMPORTANT)
+// DB Connection Status Middleware
 app.use((req, res, next) => {
-  console.log(`📡 ${req.method} ${req.url} from ${req.headers.origin}`);
+  if (mongoose.connection.readyState !== 1 && req.path.startsWith('/api')) {
+    // 0: disconnected, 1: connected, 2: connecting, 3: disconnecting
+    if (mongoose.connection.readyState === 0) {
+      return res.status(503).json({
+        success: false,
+        message: "Database connection is unavailable. Please check backend configuration."
+      });
+    }
+  }
   next();
 });
 
-// 🔥 MIDDLEWARE
-app.use(express.json());
+// Database Connection
+connectDB();
 
-// ✅ ROOT ROUTE
-app.get("/", (req, res) => {
-  res.send("🚀 API is running...");
+// Routes
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/reviews', reviewRoutes);
+
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
 });
 
-// ✅ HEALTH CHECK
-app.get("/api/health", (req, res) => {
-  console.log("💚 Health check hit");
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: new Date()
-  });
-});
-
-// 🔥 TEST ROUTE (FOR FRONTEND CHECK)
-app.get("/api/test", (req, res) => {
-  console.log("🔥 Test endpoint hit");
-  res.json({
-    success: true,
-    message: "Backend is connected successfully 🎉"
-  });
-});
-
-// ✅ ROUTES
-app.use("/api/bookings", bookingRoutes);
-app.use("/api/services", serviceRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/payments", paymentRoutes);
-app.use("/api/reviews", reviewRoutes);
-
-// ✅ 404 HANDLER
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found"
-  });
-});
-
-// ✅ ERROR HANDLER
+// Global Error Handler
 app.use((err, req, res, next) => {
-  console.error("🔥 SERVER ERROR:", err.message);
+  console.error("SERVER ERROR:", err.message);
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error"
   });
 });
 
-// ✅ START SERVER AFTER DB CONNECT
-connectDB()
-  .then(() => {
-    console.log("✅ MongoDB connected successfully");
-
-    app.listen(PORT, () => {
-      console.log("====================================");
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🌐 Local: http://localhost:${PORT}`);
-      console.log(`🌍 Ngrok: https://invitingly-cozeys-dung.ngrok-free.dev`);
-      console.log("====================================");
-    });
-  })
-  .catch((err) => {
-    console.error("❌ DB connection failed:", err.message);
-    process.exit(1);
-  });
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Backend server running on http://localhost:${PORT}`);
+});

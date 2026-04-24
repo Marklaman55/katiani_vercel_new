@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Phone, QrCode, ImageIcon, Database, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiRequest } from '../../services/api';
@@ -24,15 +24,32 @@ const SystemConfigTab = () => {
   const [testingMpesa, setTestingMpesa] = useState(false);
   const [testPhone, setTestPhone] = useState('');
 
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     fetchConfig();
   }, []);
 
   const fetchConfig = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest('/admin/config');
-      setConfig(data);
+      const data = await apiRequest('/api/admin/config');
+      setConfig(data || {
+        whatsappToken: '',
+        whatsappPhoneNumberId: '',
+        adminWhatsApp: '',
+        mongoURI: '',
+        mpesaConsumerKey: '',
+        mpesaConsumerSecret: '',
+        mpesaShortcode: '',
+        mpesaPasskey: '',
+        mpesaCallbackURL: '',
+        cloudinaryCloudName: '',
+        cloudinaryApiKey: '',
+        cloudinaryApiSecret: '',
+      });
     } catch (err) {
       toast.error("Failed to fetch system configuration");
     } finally {
@@ -44,7 +61,7 @@ const SystemConfigTab = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await apiRequest('/admin/config', {
+      await apiRequest('/api/admin/config', {
         method: 'POST',
         body: JSON.stringify(config)
       });
@@ -64,7 +81,7 @@ const SystemConfigTab = () => {
     }
     setTestingMpesa(true);
     try {
-      const data = await apiRequest('/payments/stkpush', {
+      const data = await apiRequest('/api/payments/stkpush', {
         method: 'POST',
         body: JSON.stringify({
           phone: testPhone,

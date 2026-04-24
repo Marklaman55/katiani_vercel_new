@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { CheckCircle, Star, MapPin, Phone, ChevronRight } from 'lucide-react';
@@ -9,19 +9,25 @@ const Home = () => {
   const [services, setServices] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchData = async () => {
       setLoading(true);
       try {
         const [servicesData, reviewsData] = await Promise.all([
-          apiRequest('/services'),
-          apiRequest('/reviews')
+          apiRequest('/api/services'),
+          apiRequest('/api/reviews')
         ]);
-        setServices(servicesData);
-        setReviews(reviewsData);
+        setServices(Array.isArray(servicesData) ? servicesData : []);
+        setReviews(Array.isArray(reviewsData) ? reviewsData : []);
       } catch (err) {
         console.error("Failed to fetch home data:", err.message);
+        setServices([]);
+        setReviews([]);
       } finally {
         setLoading(false);
       }
@@ -118,7 +124,7 @@ const Home = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {services.slice(0, 3).map((service, idx) => (
+            {(Array.isArray(services) ? services : []).slice(0, 3).map((service, idx) => (
               <motion.div
                 key={service._id || idx}
                 initial={{ opacity: 0, y: 20 }}

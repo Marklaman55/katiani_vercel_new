@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format, addDays } from 'date-fns';
 import { User as UserIcon, Phone, Mail, ChevronRight, Calendar, Clock } from 'lucide-react';
@@ -31,12 +31,16 @@ const BookingPage = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const servicesFetchedRef = useRef(false);
 
   useEffect(() => {
+    if (servicesFetchedRef.current) return;
+    servicesFetchedRef.current = true;
+
     const fetchServices = async () => {
       try {
-        const data = await apiRequest('/services');
-        setServices(data);
+        const data = await apiRequest('/api/services');
+        setServices(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to fetch services:", err.message);
       }
@@ -52,8 +56,8 @@ const BookingPage = () => {
 
   const checkAvailability = async (date) => {
     try {
-      const data = await apiRequest(`/bookings/availability?date=${date}`);
-      setAvailability(data);
+      const data = await apiRequest(`/api/bookings/availability?date=${date}`);
+      setAvailability(data || { count: 0, bookedSlots: [], isFull: false });
     } catch (err) {
       toast.error("Failed to check availability");
     }
@@ -70,7 +74,7 @@ const BookingPage = () => {
     
     setLoading(true);
     try {
-      const booking = await apiRequest('/bookings', {
+      const booking = await apiRequest('/api/bookings', {
         method: 'POST',
         body: JSON.stringify(formData)
       });
@@ -79,7 +83,7 @@ const BookingPage = () => {
         const service = services.find(s => s._id === formData.serviceId);
         const depositAmount = service ? Math.round(service.price * 0.5) : 1000;
         
-        const stkRes = await apiRequest('/payments/stkpush', { 
+        const stkRes = await apiRequest('/api/payments/stkpush', { 
           method: 'POST',
           body: JSON.stringify({
             phone: '254' + formData.phone, 

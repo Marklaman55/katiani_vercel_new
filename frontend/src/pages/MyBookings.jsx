@@ -19,8 +19,8 @@ const MyBookings = () => {
     }
     setLoading(true);
     try {
-      const data = await apiRequest(`/bookings/my?phone=254${phone}`);
-      setBookings(data);
+      const data = await apiRequest(`/api/bookings/my?phone=254${phone}`);
+      setBookings(data || []);
       setHasSearched(true);
     } catch (err) {
       toast.error("Failed to fetch bookings");

@@ -12,11 +12,11 @@ const PaymentStatus = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!checkoutID) return;
+    if (!checkoutID || status !== 'pending') return;
 
     const checkStatus = async () => {
       try {
-        const data = await apiRequest(`/payments/status/${checkoutID}`);
+        const data = await apiRequest(`/api/payments/status/${checkoutID}`);
         if (data.status === 'completed') {
           setStatus('success');
           localStorage.setItem('lastBooking', JSON.stringify(data.booking));
@@ -31,10 +31,15 @@ const PaymentStatus = () => {
       }
     };
 
-    const interval = setInterval(checkStatus, 3000);
+    const interval = setInterval(() => {
+      if (status === 'pending') {
+        checkStatus();
+      }
+    }, 3000);
+
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      if (status === 'pending') setStatus('timeout');
+      setStatus(current => current === 'pending' ? 'timeout' : current);
     }, 60000); // 1 minute timeout
 
     return () => {

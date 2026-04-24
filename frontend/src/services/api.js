@@ -1,16 +1,11 @@
-const BASE_URL = import.meta.env.VITE_API_URL;
-console.log("API URL:", BASE_URL);
+const API_URL = import.meta.env.VITE_API_URL || "";
+console.log("API URL:", API_URL || "(relative)");
 
-// Simple direct function (unchanged logic)
-export const getProducts = async () => {
-  const res = await fetch(`${BASE_URL}/api/products`);
-  return res.json();
-};
-
-// Main API request handler
 export const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('adminToken');
   const headers = { ...options.headers };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
   // Only set application/json if body is not FormData and Content-Type isn't already set
   if (!(options.body instanceof FormData)) {
@@ -22,21 +17,34 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, {
+    const res = await fetch(`${API_URL}${endpoint}`, {
       credentials: "include",
       ...options,
-      headers
+      headers,
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const errorBody = await res.json().catch(() => ({}));
-      throw new Error(errorBody.message || `API error: ${res.status}`);
+      let errorMessage = `API error: ${res.status}`;
+      try {
+        const errorBody = await res.json();
+        errorMessage = errorBody.message || errorMessage;
+      } catch (e) {
+        // Fallback if not JSON
+        const text = await res.text().catch(() => "");
+        if (text) errorMessage = text;
+      }
+      throw new Error(errorMessage);
     }
 
     return await res.json();
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. The server might be waking up or struggling to connect to the database.');
+    }
     console.error("API ERROR:", error);
-    return { error: true, message: error.message };
+    throw error;
   }
 };
 
@@ -47,31 +55,26 @@ const api = {
     if (res.error) throw res;
     return { data: res };
   },
-
   post: async (url, data, options) => {
     const isFormData = data instanceof FormData;
     const body = isFormData ? data : JSON.stringify(data);
     const headers = { ...options?.headers };
-
     if (!isFormData) headers["Content-Type"] = "application/json";
     
     const res = await apiRequest(url, { ...options, method: 'POST', body, headers });
     if (res.error) throw res;
     return { data: res };
   },
-
   patch: async (url, data, options) => {
     const isFormData = data instanceof FormData;
     const body = isFormData ? data : JSON.stringify(data);
     const headers = { ...options?.headers };
-
     if (!isFormData) headers["Content-Type"] = "application/json";
 
     const res = await apiRequest(url, { ...options, method: 'PATCH', body, headers });
     if (res.error) throw res;
     return { data: res };
   },
-
   delete: async (url, options) => {
     const res = await apiRequest(url, { ...options, method: 'DELETE' });
     if (res.error) throw res;

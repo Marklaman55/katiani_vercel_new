@@ -1,24 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Star, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import api from '../../services/api';
+import { apiRequest } from '../../services/api';
 import { cn } from '../../lib/utils';
 
 const ReviewManagement = ({ confirmAction }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     fetchReviews();
   }, []);
 
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/admin/reviews');
-      setReviews(res.data);
+      const data = await apiRequest('/api/admin/reviews');
+      setReviews(Array.isArray(data) ? data : []);
     } catch (err) {
       toast.error("Failed to fetch reviews");
     } finally {
@@ -28,7 +31,10 @@ const ReviewManagement = ({ confirmAction }) => {
 
   const updateStatus = async (id, status) => {
     try {
-      await api.patch(`/api/admin/reviews/${id}`, { status });
+      await apiRequest(`/api/admin/reviews/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      });
       toast.success(`Review ${status}`);
       fetchReviews();
     } catch (err) {
@@ -42,7 +48,7 @@ const ReviewManagement = ({ confirmAction }) => {
       'Are you sure you want to delete this review?',
       async () => {
         try {
-          await api.delete(`/api/admin/reviews/${id}`);
+          await apiRequest(`/api/admin/reviews/${id}`, { method: 'DELETE' });
           toast.success("Review deleted");
           fetchReviews();
         } catch (err) {
