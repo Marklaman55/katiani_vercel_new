@@ -67,8 +67,14 @@ const BookingPage = () => {
     e.preventDefault();
     if (!formData.time) return toast.error("Please select a time slot");
     
-    if (formData.phone.length !== 9) {
-      toast.error("Please enter exactly 9 digits for your phone number");
+    if (formData.phone.length < 9) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+    
+    const formattedPhone = formatKenyanNumber(formData.phone);
+    if (formattedPhone.length !== 12) {
+      toast.error("Invalid phone number format. Please use 07XXXXXXXX or 2547XXXXXXXX.");
       return;
     }
     
@@ -76,7 +82,7 @@ const BookingPage = () => {
     try {
       const booking = await apiRequest('/api/bookings', {
         method: 'POST',
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, phone: formattedPhone })
       });
 
       if (formData.paymentType === 'deposit') {
@@ -86,7 +92,7 @@ const BookingPage = () => {
         const stkRes = await apiRequest('/api/payments/stkpush', { 
           method: 'POST',
           body: JSON.stringify({
-            phone: '254' + formData.phone, 
+            phone: formattedPhone, 
             amount: depositAmount,
             bookingId: booking._id 
           })
@@ -138,24 +144,17 @@ const BookingPage = () => {
                 <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                   <Phone size={16} /> Phone Number
                 </label>
-                <div className="flex items-center gap-0 border border-brand-pink-dark rounded-2xl bg-white focus-within:border-brand-accent transition-all overflow-hidden">
-                  <span className="pl-4 pr-2 py-3 text-gray-500 font-bold border-r border-gray-100 bg-gray-50/50">
-                    +254
-                  </span>
-                  <input 
-                    required
-                    type="tel" 
-                    className="flex-1 px-4 py-3 outline-none text-gray-900 font-medium" 
-                    placeholder="712 345 678"
-                    value={formData.phone}
-                    onChange={e => {
-                      let val = e.target.value.replace(/\D/g, '');
-                      if (val.startsWith('0')) val = val.slice(1);
-                      if (val.startsWith('254')) val = val.slice(3);
-                      if (val.length <= 9) setFormData({...formData, phone: val});
-                    }}
-                  />
-                </div>
+                <input 
+                  required
+                  type="tel" 
+                  className="input-field" 
+                  placeholder="07XXXXXXXX or 254XXXXXXXXX"
+                  value={formData.phone}
+                  onChange={e => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 12) setFormData({...formData, phone: val});
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 flex items-center gap-2">

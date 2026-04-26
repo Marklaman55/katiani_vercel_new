@@ -9,7 +9,24 @@ const router = express.Router();
 router.get('/availability', async (req, res) => {
   const { date } = req.query;
   try {
-    const bookings = await Booking.find({ date, status: { $ne: 'cancelled' } });
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    
+    // Find all bookings for this date that are NOT cancelled
+    // EXCEPT pending deposit bookings that have timed out
+    const bookings = await Booking.find({ 
+      date, 
+      $or: [
+        { status: 'confirmed' },
+        { status: 'completed' },
+        { status: 'pending', paymentType: 'cash' },
+        { 
+          status: 'pending', 
+          paymentType: 'deposit',
+          createdAt: { $gte: fifteenMinutesAgo } 
+        }
+      ]
+    });
+
     const bookedSlots = bookings.map(b => b.time);
     res.json({
       count: bookings.length,

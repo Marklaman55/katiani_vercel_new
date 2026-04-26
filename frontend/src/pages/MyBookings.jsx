@@ -13,13 +13,14 @@ const MyBookings = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (phone.length !== 9) {
-      toast.error("Please enter exactly 9 digits for your phone number");
+    const formattedPhone = formatKenyanNumber(phone);
+    if (formattedPhone.length !== 12) {
+      toast.error("Invalid phone number. Please use 07XXXXXXXX or 254XXXXXXXXX");
       return;
     }
     setLoading(true);
     try {
-      const data = await apiRequest(`/api/bookings/my?phone=254${phone}`);
+      const data = await apiRequest(`/api/bookings/my?phone=${formattedPhone}`);
       setBookings(data || []);
       setHasSearched(true);
     } catch (err) {
@@ -39,21 +40,16 @@ const MyBookings = () => {
 
         <div className="glass-card p-6 mb-12">
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-grow flex items-center gap-0 border border-brand-pink-dark rounded-2xl bg-white focus-within:border-brand-accent transition-all overflow-hidden">
-              <span className="pl-4 pr-2 py-3 text-gray-500 font-bold border-r border-gray-100 bg-gray-50/50">
-                +254
-              </span>
+            <div className="flex-grow">
               <input 
                 required
                 type="tel" 
-                className="flex-1 px-4 py-3 outline-none text-gray-900 font-medium" 
-                placeholder="712 345 678"
+                className="input-field" 
+                placeholder="Enter 07XXXXXXXX or 254XXXXXXXXX"
                 value={phone}
                 onChange={e => {
                   let val = e.target.value.replace(/\D/g, '');
-                  if (val.startsWith('0')) val = val.slice(1);
-                  if (val.startsWith('254')) val = val.slice(3);
-                  if (val.length <= 9) setPhone(val);
+                  if (val.length <= 12) setPhone(val);
                 }}
               />
             </div>

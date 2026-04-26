@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle, Star } from 'lucide-react';
+import { CheckCircle, Star, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { apiRequest } from '../services/api';
@@ -11,11 +11,36 @@ const SuccessPage = () => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [reviewed, setReviewed] = useState(false);
+  const qrRef = useRef(null);
 
   useEffect(() => {
     const last = localStorage.getItem('lastBooking');
     if (last) setBooking(JSON.parse(last));
   }, []);
+
+  const downloadQR = () => {
+    const svg = qrRef.current.querySelector('svg');
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `Katiani-Styles-Booking-${booking._id?.slice(-6)}.png`;
+      downloadLink.href = `${pngFile}`;
+      downloadLink.click();
+      toast.success("QR Code downloaded!");
+    };
+    
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
 
   const handleReview = async (e) => {
     e.preventDefault();
@@ -34,6 +59,8 @@ const SuccessPage = () => {
 
   if (!booking) return <div className="pt-32 text-center">No booking found.</div>;
 
+  const isPending = booking.paymentType === 'deposit' && booking.status === 'pending';
+
   return (
     <div className="pt-32 pb-24 min-h-screen bg-brand-pink/20">
       <div className="max-w-2xl mx-auto px-4 space-y-8">
@@ -45,8 +72,15 @@ const SuccessPage = () => {
           <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={40} />
           </div>
-          <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
-          <p className="text-gray-600 mb-8">We've sent a confirmation to your phone.</p>
+          <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2">
+            {isPending ? "Booking Initiated!" : "Booking Confirmed!"}
+          </h1>
+          <p className="text-gray-600 mb-8">
+            {isPending 
+              ? "Your booking is pending deposit payment confirmation. Please complete the M-Pesa prompt on your phone." 
+              : "We've sent a confirmation to your phone."
+            }
+          </p>
           
           <div className="bg-white/50 p-6 rounded-3xl border border-white/50 mb-8 space-y-3">
             <div className="flex justify-between text-sm">
@@ -55,17 +89,37 @@ const SuccessPage = () => {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Phone:</span>
-              <span className="font-bold text-gray-900">+254 {formatKenyanNumber(booking.phone)}</span>
+              <span className="font-bold text-gray-900">{formatKenyanNumber(booking.phone)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Date & Time:</span>
               <span className="font-bold text-gray-900">{booking.date} at {booking.time}</span>
             </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Status:</span>
+              <span className={cn(
+                "font-bold px-2 py-0.5 rounded-full text-xs uppercase",
+                booking.status === 'confirmed' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+              )}>
+                {booking.status}
+              </span>
+            </div>
           </div>
           
-          <div className="bg-white p-6 rounded-2xl border border-brand-pink-dark inline-block mb-8">
-            <QRCodeSVG value={JSON.stringify({ id: booking._id, name: booking.name })} size={150} />
-            <p className="text-xs text-gray-500 mt-4 font-mono">ID: {booking._id?.slice(-8) || 'N/A'}</p>
+          <div className="space-y-4">
+            <div ref={qrRef} className="bg-white p-6 rounded-2xl border border-brand-pink-dark inline-block shadow-sm">
+              <QRCodeSVG value={JSON.stringify({ id: booking._id, name: booking.name })} size={150} />
+              <p className="text-xs text-gray-500 mt-4 font-mono">ID: {booking._id?.slice(-8) || 'N/A'}</p>
+            </div>
+
+            <div>
+              <button 
+                onClick={downloadQR}
+                className="inline-flex items-center gap-2 text-brand-accent hover:text-brand-accent-dark font-bold text-sm bg-white px-4 py-2 rounded-full border border-brand-pink-dark shadow-sm transition-all"
+              >
+                <Download size={16} /> Download Ticket
+              </button>
+            </div>
           </div>
         </motion.div>
 

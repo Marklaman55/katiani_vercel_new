@@ -25,9 +25,10 @@ export const apiRequest = async (endpoint, options = {}) => {
     });
     clearTimeout(timeoutId);
 
+    const contentType = res.headers.get("content-type");
+    
     if (!res.ok) {
       let errorMessage = `API error: ${res.status}`;
-      const contentType = res.headers.get("content-type");
       
       if (contentType && contentType.includes("application/json")) {
         try {
@@ -41,12 +42,18 @@ export const apiRequest = async (endpoint, options = {}) => {
       } else {
         const text = await res.text().catch(() => "");
         console.error("Non-JSON error response:", text.substring(0, 500));
-        errorMessage = `Server returned HTML/Text instead of JSON. Check backend logs. (Status: ${res.status})`;
+        errorMessage = `Server returned HTML/Text instead of JSON. (Status: ${res.status}). Error starts with: ${text.substring(0, 50).replace(/<[^>]*>?/gm, '')}`;
       }
       throw new Error(errorMessage);
     }
 
-    return await res.json();
+    if (contentType && contentType.includes("application/json")) {
+      return await res.json();
+    } else {
+      const text = await res.text();
+      console.error("Expected JSON but got:", text.substring(0, 100));
+      throw new Error(`Expected JSON but received: ${text.substring(0, 20).replace(/<[^>]*>?/gm, '')}... This usually happens when an API route is missing and the server yields index.html instead.`);
+    }
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error('Request timed out. The server might be waking up or struggling to connect to the database.');

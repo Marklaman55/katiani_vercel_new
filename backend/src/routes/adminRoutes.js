@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User, Booking, Service, Category, Review, SystemConfig } from '../models.js';
+import { User, Booking, Service, Category, Review, SystemConfig, MpesaTransaction } from '../models.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import { upload } from '../config/cloudinary.js';
@@ -43,6 +43,28 @@ router.post('/login', async (req, res) => {
 
 // --- PROTECTED ROUTES ---
 router.use(authMiddleware);
+
+// Analytics
+router.get('/analytics', async (req, res) => {
+  try {
+    const totalBookings = await Booking.countDocuments();
+    const successfulTransactions = await MpesaTransaction.find({ Status: 'success' });
+    const totalRevenue = successfulTransactions.reduce((acc, curr) => acc + (curr.Amount || 0), 0);
+    const uniqueClients = await Booking.distinct('phone');
+    const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+    
+    res.json({
+      totalRevenue,
+      totalBookings,
+      avgBookingValue,
+      clientAcquisitionCost: 0, // Placeholder unless we have marketing spend data
+      uniqueClients: uniqueClients.length,
+      revenuePerClient: uniqueClients.length > 0 ? totalRevenue / uniqueClients.length : 0
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching analytics' });
+  }
+});
 
 // Stats
 router.get('/stats', async (req, res) => {

@@ -22,7 +22,17 @@ export default function App() {
   useEffect(() => {
     console.log("🛠️ CURRENT LOCATION:", window.location.href);
     fetch('/api/connection')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) {
+          const text = await r.text();
+          throw new Error(`HTTP ${r.status}: ${text.substring(0, 50)}`);
+        }
+        const contentType = r.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return r.json();
+        }
+        throw new Error("Received non-JSON response from /api/connection");
+      })
       .then(d => {
         console.log('🚀 CONNECTION OK:', d);
         setConnStatus(`Connected ✅ (DB: ${d.database || '?'})`);

@@ -86,10 +86,15 @@ const AdminDashboard = () => {
     try {
       const [bookingsData, statsData] = await Promise.all([
         apiRequest('/api/admin/bookings'),
-        apiRequest('/api/admin/stats')
+        apiRequest('/api/admin/analytics')
       ]);
       setBookings(Array.isArray(bookingsData) ? bookingsData : []);
-      setStats(statsData && !statsData.error ? statsData : { totalBookings: 0, totalRevenue: 0, pendingBookings: 0, activeClients: 0 });
+      setStats(statsData && !statsData.error ? statsData : { 
+        totalBookings: 0, 
+        totalRevenue: 0, 
+        avgBookingValue: 0, 
+        uniqueClients: 0 
+      });
     } catch (err) {
       if (err.message?.includes('401')) {
         localStorage.removeItem('adminToken');

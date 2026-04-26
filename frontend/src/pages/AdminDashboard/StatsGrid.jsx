@@ -3,10 +3,10 @@ import { TrendingUp, DollarSign, Clock, Users } from 'lucide-react';
 
 const StatsGrid = ({ stats }) => {
   const statCards = [
-    { label: 'Total Bookings', value: stats.totalBookings, icon: TrendingUp, color: 'blue' },
-    { label: 'Total Revenue', value: `KES ${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'green' },
-    { label: 'Pending Bookings', value: stats.pendingBookings, icon: Clock, color: 'orange' },
-    { label: 'Active Clients', value: stats.activeClients, icon: Users, color: 'purple' },
+    { label: 'Total Bookings', value: stats.totalBookings || 0, icon: TrendingUp, color: 'blue' },
+    { label: 'Total Revenue', value: `KES ${(stats.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'green' },
+    { label: 'Avg Booking Value', value: `KES ${(stats.avgBookingValue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, icon: Clock, color: 'orange' },
+    { label: 'Unique Clients', value: stats.uniqueClients || stats.activeClients || 0, icon: Users, color: 'purple' },
   ];
 
   return (

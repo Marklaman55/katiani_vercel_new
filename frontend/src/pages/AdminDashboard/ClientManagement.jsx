@@ -66,7 +66,7 @@ const ClientManagement = ({ confirmAction }) => {
     const headers = ['Name', 'Phone', 'Email', 'Total Bookings', 'Last Visit'];
     const rows = filteredClients.map(c => [
       c.name,
-      `254${c.phone}`,
+      formatKenyanNumber(c.phone),
       c.email || 'N/A',
       c.bookingCount || 0,
       c.lastBookingDate ? new Date(c.lastBookingDate).toLocaleDateString() : 'N/A'
@@ -142,7 +142,7 @@ const ClientManagement = ({ confirmAction }) => {
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">{client.name}</h3>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Phone size={12} /> +254 {formatKenyanNumber(client.phone)}
+                  <Phone size={12} /> {formatKenyanNumber(client.phone)}
                 </div>
               </div>
             </div>
@@ -162,7 +162,7 @@ const ClientManagement = ({ confirmAction }) => {
 
             <div className="flex gap-3">
               <a 
-                href={`https://wa.me/254${client.phone}`}
+                href={`https://wa.me/${formatKenyanNumber(client.phone)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-50 text-green-600 rounded-xl text-xs font-bold hover:bg-green-100 transition-all"

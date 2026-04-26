@@ -11,9 +11,17 @@ export const connectDB = async () => {
     return;
   }
   try {
+    // Disable buffering if no URI is provided
+    if (!uri) {
+      mongoose.set('bufferCommands', false);
+      console.error("CRITICAL: MongoDB URI is missing from environment variables.");
+      return;
+    }
+
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000, 
       connectTimeoutMS: 10000,
+      bufferCommands: false // Disable buffering globally for this connection
     });
     console.log("MongoDB connected successfully");
     

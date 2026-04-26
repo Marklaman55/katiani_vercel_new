@@ -42,7 +42,7 @@ const BookingsTable = ({ bookings, fetchBookings, confirmAction }) => {
     const headers = ['Name', 'Phone', 'Service', 'Date', 'Time', 'Status', 'Payment'];
     const rows = filteredBookings.map(b => [
       b.name,
-      `254${b.phone}`,
+      formatKenyanNumber(b.phone),
       b.service,
       b.date,
       b.time,
@@ -109,10 +109,10 @@ const BookingsTable = ({ bookings, fetchBookings, confirmAction }) => {
                     <div className="w-10 h-10 rounded-full bg-brand-pink flex items-center justify-center text-brand-accent font-bold">
                       {booking.name[0]}
                     </div>
-                    <div>
-                      <div className="font-bold text-gray-900">{booking.name}</div>
-                      <div className="text-xs text-gray-500">+254 {formatKenyanNumber(booking.phone)}</div>
-                    </div>
+                      <div>
+                        <div className="font-bold text-gray-900">{booking.name}</div>
+                        <div className="text-xs text-gray-500">{formatKenyanNumber(booking.phone)}</div>
+                      </div>
                   </div>
                 </td>
                 <td className="px-8 py-5">

@@ -16,6 +16,7 @@ const BookingSchema = new mongoose.Schema({
   time: { type: String, required: true },
   status: { type: String, enum: ['pending', 'confirmed', 'completed', 'cancelled'], default: 'pending' },
   paymentType: { type: String, enum: ['deposit', 'cash'], required: true },
+  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   qrCode: { type: String },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
