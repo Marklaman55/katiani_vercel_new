@@ -4,7 +4,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
+import { createServer as createViteServer } from 'vite'; // ✅ KEEP
 import { connectDB } from './src/config/db.js';
 import bookingRoutes from './src/routes/bookingRoutes.js';
 import serviceRoutes from './src/routes/serviceRoutes.js';
@@ -20,11 +20,11 @@ const __dirname = path.dirname(__filename);
 process.on('uncaughtException', (err) => {
   console.error("💥 CRITICAL UNCAUGHT EXCEPTION:", err);
 });
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   console.error("💥 CRITICAL UNHANDLED REJECTION:", reason);
 });
 
-// 🔥 GLOBAL LOGGER SYSTEM
+// 🔥 LOGGER
 const log = {
   server: (msg) => console.log(`🚀 SERVER: ${msg}`),
   db: (msg) => console.log(`🗄️ DATABASE: ${msg}`),
@@ -37,13 +37,14 @@ const log = {
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
-  
+
   console.log(`📡 [DEBUG] NODE_ENV: ${process.env.NODE_ENV}`);
-  console.log(`📡 [DEBUG] CWD: ${process.cwd()}`);
   console.log(`📡 [DEBUG] __dirname: ${__dirname}`);
+
+  // 🔥 REQUEST LOGGER
   app.use((req, res, next) => {
     const origin = req.headers.origin || "unknown";
-    console.log(`📡 [EXPRESS-REQ] ${req.method} ${req.url} (Origin: ${origin}, Content-Type: ${req.headers['content-type']})`);
+    console.log(`📡 ${req.method} ${req.url} (${origin})`);
     next();
   });
 
@@ -55,45 +56,34 @@ async function startServer() {
 
   app.use(express.json());
 
-  // 🔥 TEST ENDPOINTS (TOP PRIORITY)
+  // 🔥 TEST ENDPOINTS
   app.get("/api/connection", (req, res) => {
     res.json({
       success: true,
       message: "Frontend ↔ Backend connection is ACTIVE 🚀",
-      time: new Date(),
-      env: {
-        NODE_ENV: process.env.NODE_ENV,
-        PORT: process.env.PORT,
-        cwd: process.cwd(),
-        __dirname
-      }
+      time: new Date()
     });
   });
 
   app.get('/api/health', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      database: mongoose.connection.readyState,
-      routes: app._router.stack
-        .filter(r => r.route || (r.handle && r.handle.stack))
-        .map(r => r.route ? `${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}` : 'middleware/router')
+    res.json({
+      status: 'ok',
+      database: mongoose.connection.readyState
     });
   });
 
-  // DB Connection Status Middleware
+  // DB CHECK
   app.use((req, res, next) => {
-    if (mongoose.connection.readyState !== 1 && req.path.startsWith('/api')) {
-      if (mongoose.connection.readyState === 0) {
-        return res.status(503).json({
-          success: false,
-          message: "Database connection is unavailable."
-        });
-      }
+    if (req.path.startsWith('/api') && mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: "Database connection unavailable"
+      });
     }
     next();
   });
 
-  // Routes
+  // ROUTES
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/services', serviceRoutes);
   app.use('/api/categories', categoryRoutes);
@@ -101,56 +91,57 @@ async function startServer() {
   app.use('/api/payments', paymentRoutes);
   app.use('/api/reviews', reviewRoutes);
 
-  // Catch-all for undefined API routes (MUST BE BEFORE VITE)
+  // API 404
   app.all('/api/*', (req, res) => {
-    console.log(`[CATCH-ALL] Unhandled API request: ${req.method} ${req.url}`);
     res.status(404).json({
       success: false,
-      message: `API Route not found: ${req.method} ${req.url}`,
-      debug: "BACKEND_CATCH_ALL_HIT"
+      message: `API Route not found: ${req.method} ${req.url}`
     });
   });
 
-  // Vite middleware for development
+  // 🔥 FIXED VITE BLOCK (SAFE)
   if (process.env.NODE_ENV !== "production") {
-    log.server("Integrating Vite middleware...");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-      root: path.join(__dirname, '../frontend'),
-    });
-    app.use(vite.middlewares);
+    try {
+      log.server("Starting Vite middleware...");
+
+      const vite = await createViteServer({
+        root: path.resolve(__dirname, '../frontend'),
+        server: { middlewareMode: true },
+        appType: 'spa'
+      });
+
+      app.use(vite.middlewares);
+
+    } catch (err) {
+      log.error("Vite failed to start: " + err.message);
+    }
   } else {
     const distPath = path.join(__dirname, '../frontend/dist');
     app.use(express.static(distPath));
+
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  // 🔥 ERROR LOGGER
+  // ERROR HANDLER
   app.use((err, req, res, next) => {
-    const errMsg = err.message || 'Internal Server Error';
-    log.error(`${req.method} ${req.url} → ${errMsg}`);
-    res.status(err.status || 500).json({ success: false, message: errMsg });
-  });
-
-  // Start listening immediately to avoid AI Studio timeout fallbacks
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log("====================================");
-    log.server(`Full-stack server running on port ${PORT}`);
-    console.log("====================================");
-  });
-
-  // Database Connection (in background)
-  connectDB()
-    .then(() => {
-      log.db("MongoDB connected successfully");
-      console.log(`📡 [SERVER-INFO] Database State: ${mongoose.connection.readyState}`);
-    })
-    .catch((err) => {
-      log.error(`Database connection failed: ${err.message}`);
+    log.error(`${req.method} ${req.url} → ${err.message}`);
+    res.status(500).json({
+      success: false,
+      message: err.message
     });
+  });
+
+  // START SERVER
+  app.listen(PORT, "0.0.0.0", () => {
+    log.server(`Running on port ${PORT}`);
+  });
+
+  // CONNECT DB
+  connectDB()
+    .then(() => log.db("MongoDB connected"))
+    .catch(err => log.error(err.message));
 }
 
 startServer();
